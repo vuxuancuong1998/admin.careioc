@@ -1,6 +1,6 @@
 RewriteEngine on
 
-RewriteBase /careioc/
+RewriteBase /admin.careioc/
 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

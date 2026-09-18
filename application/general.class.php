@@ -15,6 +15,7 @@ Class general{
      * @access public
      */
     private static $instance;
+    private $menuPermissionCache = array();
 
     /**
      *
@@ -88,6 +89,69 @@ Class general{
 			$listpermissionbydepart = $this->get_permission();
 			return in_array($role,$listpermissionbydepart);
 		}
+	}
+
+	public function userHasMenu($menuCode, $operation = 'view', $userId = null)
+	{
+		$operations = array(
+			'view' => 'can_view', 'create' => 'can_create', 'update' => 'can_update',
+			'delete' => 'can_delete', 'import' => 'can_import', 'export' => 'can_export'
+		);
+		if (!isset($operations[$operation])) return false;
+		$userId = $userId === null ? (isset($_SESSION['user']['id']) ? (int) $_SESSION['user']['id'] : 0) : (int) $userId;
+		if ($userId < 1 || !is_string($menuCode) || $menuCode === '') return false;
+
+		$cacheKey = $userId . '|' . $menuCode . '|' . $operation;
+		if (array_key_exists($cacheKey, $this->menuPermissionCache)) return $this->menuPermissionCache[$cacheKey];
+
+		global $db;
+		$db->query("SELECT is_admin FROM ioc_users WHERE id = $userId AND is_active = 1 AND user_status = 1 LIMIT 1");
+		$user = $db->fetch_object(true);
+		if (!$user) return $this->menuPermissionCache[$cacheKey] = false;
+		if ((int) $user->is_admin === 1) return $this->menuPermissionCache[$cacheKey] = true;
+
+		$safeMenuCode = $db->escapestring($menuCode);
+		$permissionColumn = $operations[$operation];
+		$db->query("SELECT p.id FROM ioc_user_menu_permissions p
+			INNER JOIN ioc_site_menus m ON m.id = p.menu_id AND m.is_active = 1
+			INNER JOIN ioc_user_site_access s ON s.user_id = p.user_id
+				AND s.site_code = m.site_code AND s.is_active = 1 AND s.deleted_at IS NULL
+			WHERE p.user_id = $userId AND m.menu_code = '$safeMenuCode'
+				AND p.is_active = 1 AND p.$permissionColumn = 1 LIMIT 1");
+		return $this->menuPermissionCache[$cacheKey] = (bool) $db->fetch_object(true);
+	}
+
+	public function getUserMenus($siteCode, $userId = null)
+	{
+		if (!in_array($siteCode, array('admin', 'backend', 'dashboard'), true)) return array();
+		$userId = $userId === null ? (isset($_SESSION['user']['id']) ? (int) $_SESSION['user']['id'] : 0) : (int) $userId;
+		if ($userId < 1) return array();
+
+		global $db;
+		$db->query("SELECT is_admin FROM ioc_users WHERE id = $userId AND is_active = 1 AND user_status = 1 LIMIT 1");
+		$user = $db->fetch_object(true);
+		if (!$user) return array();
+		$safeSiteCode = $db->escapestring($siteCode);
+		$db->query("SELECT id, site_code, menu_code, menu_name, parent_id, route, icon, sort_order
+			FROM ioc_site_menus WHERE site_code = '$safeSiteCode' AND is_active = 1 ORDER BY sort_order, id");
+		$allMenus = $db->fetch_object();
+		$allMenus = is_array($allMenus) ? $allMenus : array();
+		if ((int) $user->is_admin === 1) return $allMenus;
+
+		$db->query("SELECT p.menu_id FROM ioc_user_menu_permissions p
+			INNER JOIN ioc_site_menus m ON m.id = p.menu_id AND m.site_code = '$safeSiteCode' AND m.is_active = 1
+			INNER JOIN ioc_user_site_access s ON s.user_id = p.user_id AND s.site_code = m.site_code
+				AND s.is_active = 1 AND s.deleted_at IS NULL
+			WHERE p.user_id = $userId AND p.is_active = 1 AND p.can_view = 1");
+		$permissionRows = $db->fetch_object();
+		$allowedIds = array();
+		foreach (is_array($permissionRows) ? $permissionRows : array() as $permission) $allowedIds[(int) $permission->menu_id] = true;
+		foreach ($allMenus as $menu) {
+			if (isset($allowedIds[(int) $menu->id]) && $menu->parent_id) $allowedIds[(int) $menu->parent_id] = true;
+		}
+		return array_values(array_filter($allMenus, function ($menu) use ($allowedIds) {
+			return isset($allowedIds[(int) $menu->id]);
+		}));
 	}
 	public function get_status_list()
 	{

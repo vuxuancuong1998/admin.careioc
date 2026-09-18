@@ -59,25 +59,25 @@ public static function getInstance() {
  }
 
 
-// function show($name) {
-// 	// echo __SITE_PATH;
-// 	$path = __SITE_PATH . '/template/' .ThemeMaster. '/' . $name . '.php';
-// 	// echo 'link:'. $path;
-// 	if (file_exists($path) == false)
-// 	{
-// 		$path = __SITE_PATH . '/template/' .ThemeMaster. '/404.php';
-// 		//throw new Exception('Template not found in '. $path);
-// 		//return false;
-// 	}
+function show($name) {
+	// echo __SITE_PATH;
+	$path = __SITE_PATH . '/template/' .ThemeMaster. '/' . $name . '.php';
+	// echo 'link:'. $path;
+	if (file_exists($path) == false)
+	{
+		$path = __SITE_PATH . '/template/' .ThemeMaster. '/404.php';
+		//throw new Exception('Template not found in '. $path);
+		//return false;
+	}
 
-// 	// Load variables
-// 	foreach ($this->data as $key => $value)
-// 	{
-// 		$$key = $value;
-// 	}
+	// Load variables
+	foreach ($this->data as $key => $value)
+	{
+		$$key = $value;
+	}
 
-// 	include ($path);               
-// }
+	include ($path);               
+}
 function admintmp($name) {
 	
 $path = __SITE_PATH . '/template/' .admin. '/' . $name . '.php';

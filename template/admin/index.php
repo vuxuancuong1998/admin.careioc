@@ -13,6 +13,7 @@
   
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
     tailwind.config = {
@@ -73,62 +74,45 @@
 
     <!-- Danh sách Menu -->
     <div class="flex-1 overflow-y-auto no-scrollbar py-4 px-3 space-y-1">
-      
-      <div class="sidebar-text px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Điều Hành & Khám Chữa</div>
-
-      <a href="javascript:void(0)" onclick="switchTab('dashboard', this)" class="nav-item active flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 bg-brand-50 text-brand-700 font-semibold">
-        <i class="ph ph-squares-four text-xl text-brand-600 shrink-0"></i>
-        <span class="sidebar-text truncate">Tổng Quan IOC</span>
-      </a>
-
-      <a href="<?php echo XC_URL; ?>/admin/outpatient" class="nav-item flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700">
-        <i class="ph ph-stethoscope text-xl text-slate-400 shrink-0"></i>
-        <span class="sidebar-text truncate">Khám Bệnh & Tiếp Đón</span>
-      </a>
-
-      <a href="javascript:void(0)" onclick="switchTab('inpatient', this)" class="nav-item flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700">
-        <i class="ph ph-bed text-xl text-slate-400 shrink-0"></i>
-        <span class="sidebar-text truncate">Nội Trú & Giường Bệnh</span>
-      </a>
-
-      <!-- MENU DANH MỤC CÓ SUBMENU CON -->
-      <div class="pt-1">
-        <button onclick="toggleSubmenu('category-menu', this)" class="w-full flex items-center justify-between px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700 focus:outline-none">
-          <div class="flex items-center gap-3">
-            <i class="ph ph-folder-notch-open text-xl text-slate-400 shrink-0"></i>
-            <span class="sidebar-text truncate">Quản Lý Danh Mục</span>
+      <?php
+        $menuRoots = array();
+        $menuChildren = array();
+        foreach (isset($adminMenus) && is_array($adminMenus) ? $adminMenus : array() as $menu) {
+          if ($menu->parent_id) $menuChildren[(int) $menu->parent_id][] = $menu;
+          else $menuRoots[] = $menu;
+        }
+      ?>
+      <div class="sidebar-text px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Menu chức năng</div>
+      <?php foreach ($menuRoots as $menu): ?>
+        <?php $children = isset($menuChildren[(int) $menu->id]) ? $menuChildren[(int) $menu->id] : array(); ?>
+        <?php if ($children): ?>
+          <div class="pt-1">
+            <button onclick="toggleSubmenu('db-menu-<?php echo (int) $menu->id; ?>', this)" class="w-full flex items-center justify-between px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700 focus:outline-none">
+              <div class="flex min-w-0 items-center gap-3">
+                <i class="ph <?php echo htmlspecialchars($menu->icon ?: 'ph-folder-notch-open', ENT_QUOTES, 'UTF-8'); ?> text-xl text-slate-400 shrink-0"></i>
+                <span class="sidebar-text truncate"><?php echo htmlspecialchars($menu->menu_name, ENT_QUOTES, 'UTF-8'); ?></span>
+              </div>
+              <i class="ph ph-caret-down text-xs text-slate-400 transition-transform duration-200 submenu-arrow sidebar-text"></i>
+            </button>
+            <div id="db-menu-<?php echo (int) $menu->id; ?>" class="hidden pl-8 pr-1 py-1 space-y-1">
+              <?php foreach ($children as $child): ?>
+                <a href="<?php echo $child->route ? XC_URL . htmlspecialchars($child->route, ENT_QUOTES, 'UTF-8') : 'javascript:void(0)'; ?>" class="subnav-item flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-brand-700 hover:bg-blue-50/80 transition">
+                  <i class="ph <?php echo htmlspecialchars($child->icon ?: 'ph-circle', ENT_QUOTES, 'UTF-8'); ?> text-sm text-blue-500"></i>
+                  <span class="sidebar-text"><?php echo htmlspecialchars($child->menu_name, ENT_QUOTES, 'UTF-8'); ?></span>
+                </a>
+              <?php endforeach; ?>
+            </div>
           </div>
-          <i class="ph ph-caret-down text-xs text-slate-400 transition-transform duration-200 submenu-arrow sidebar-text"></i>
-        </button>
-
-        <!-- Submenu -->
-        <div id="category-menu" class="hidden pl-8 pr-1 py-1 space-y-1">
-          <a href="javascript:void(0)" onclick="switchTab('category-departments', this)" class="subnav-item flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-brand-700 hover:bg-blue-50/80 transition">
-            <i class="ph ph-circle text-[7px] text-slate-300"></i>
-            <span class="sidebar-text">Khoa phòng</span>
+        <?php else: ?>
+          <a href="<?php echo $menu->route ? XC_URL . htmlspecialchars($menu->route, ENT_QUOTES, 'UTF-8') : 'javascript:void(0)'; ?>" class="nav-item flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700">
+            <i class="ph <?php echo htmlspecialchars($menu->icon ?: 'ph-circle', ENT_QUOTES, 'UTF-8'); ?> text-xl text-slate-400 shrink-0"></i>
+            <span class="sidebar-text truncate"><?php echo htmlspecialchars($menu->menu_name, ENT_QUOTES, 'UTF-8'); ?></span>
           </a>
-          <a href="javascript:void(0)" onclick="switchTab('category-beds', this)" class="subnav-item flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-brand-700 hover:bg-blue-50/80 transition">
-            <i class="ph ph-circle text-[7px] text-slate-300"></i>
-            <span class="sidebar-text">Giường bệnh</span>
-          </a>
-          <a href="javascript:void(0)" onclick="switchTab('category-staff', this)" class="subnav-item flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-brand-700 hover:bg-blue-50/80 transition">
-            <i class="ph ph-circle text-[7px] text-slate-300"></i>
-            <span class="sidebar-text">Nhân viên</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="sidebar-text px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Giám Sát & Hạ Tầng</div>
-
-      <a href="javascript:void(0)" onclick="switchTab('it-infra', this)" class="nav-item flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700">
-        <i class="ph ph-hard-drives text-xl text-slate-400 shrink-0"></i>
-        <span class="sidebar-text truncate">Hạ Tầng CNTT & Server</span>
-      </a>
-
-      <a href="javascript:void(0)" onclick="switchTab('security', this)" class="nav-item flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700">
-        <i class="ph ph-shield-check text-xl text-slate-400 shrink-0"></i>
-        <span class="sidebar-text truncate">An Toàn Thông Tin (ATTT)</span>
-      </a>
+        <?php endif; ?>
+      <?php endforeach; ?>
+      <?php if (!$menuRoots): ?>
+        <div class="mx-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-700">Tài khoản chưa được cấp menu chức năng.</div>
+      <?php endif; ?>
 
     </div>
 
@@ -185,7 +169,7 @@
           <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-blue-100 py-1.5 z-50">
             <div class="px-4 py-2 border-b border-slate-100">
               <p class="text-xs text-slate-400">Tài khoản quản trị</p>
-              <p class="text-xs font-bold text-slate-800 truncate">Võ Văn Cường (Admin)</p>
+              <p class="text-xs font-bold text-slate-800 truncate"><?php echo htmlspecialchars(isset($_SESSION['user']['fullname']) ? $_SESSION['user']['fullname'] : $_SESSION['user']['username'], ENT_QUOTES, 'UTF-8'); ?> (Admin)</p>
             </div>
             
             <div class="py-1">
@@ -785,20 +769,28 @@
     }
     function handlePasswordSubmit(event) {
       event.preventDefault();
-      alert('Đổi mật khẩu tài khoản quản trị thành công!');
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'info', title: 'Chức năng đổi mật khẩu đang được hoàn thiện.', showConfirmButton: false, timer: 3000 });
       closeChangePasswordModal();
     }
 
     // Thao tác xem/sửa/xóa test
     function handleAction(msg) {
-      alert('Thao tác được kích hoạt: ' + msg);
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'info', title: 'Thao tác: ' + msg, showConfirmButton: false, timer: 3000 });
     }
 
     // Đăng xuất
     function logoutAction() {
-      if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi IOC?')) {
-        alert('Đã đăng xuất thành công.');
-      }
+      Swal.fire({
+        title: 'Đăng xuất khỏi IOC?',
+        text: 'Phiên quản trị hiện tại sẽ được kết thúc.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Đăng xuất',
+        cancelButtonText: 'Ở lại',
+        confirmButtonColor: '#e11d48'
+      }).then((result) => {
+        if (result.isConfirmed) window.location.href = <?php echo json_encode(XC_URL . '/logout'); ?>;
+      });
     }
   </script>
 </body>

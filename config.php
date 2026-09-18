@@ -29,15 +29,16 @@ define('SMS_API_SECRECT', 'C09E8A7C0D6A47BA117A3964A94EB8');
 
 /*** define Theme ***/
 
-define('dashboard', 'dashboard'); //Replace xpanel by your theme's name
+define('ThemeMaster', 'admin'); //Giao diện điều hướng bởi indexController
+define('dashboard', 'dashboard');
 define('backend', 'backend'); //Replace xpanel by your admin theme's name
 define('admin', 'admin'); //Replace xpanel by your admin theme's name
 
 /*** define site path ***/
-define('XC_URL','http://localhost/careioc');
+define('XC_URL','http://localhost/admin.careioc');
 $siteurl = XC_URL;
 /*** template path ***/
-$template_path = XC_URL.'/template/'.dashboard; //Warning: Don't change here
+$template_path = XC_URL.'/template/'.ThemeMaster; //Warning: Don't change here
 $backend_path = XC_URL.'/template/'.backend; //Warning: Don't change here
 $admin_path = XC_URL.'/template/'.admin; //Warning: Don't change here
 $upload_path = XC_URL.'/uploads';
