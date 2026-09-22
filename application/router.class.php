@@ -117,33 +117,21 @@ private function getController() {
 	{
 		/*** get the parts of the route ***/
 		$parts = explode('/', $route);
-		if($parts[0] == "login")
+		$indexActions = array('login', 'logout', 'accounts', 'outpatient', 'inpatient', 'departments', 'beds', 'staff', 'infrastructure', 'security', 'system', 'system_api');
+		if(in_array($parts[0], $indexActions, true))
 		{
-			// var_dump(222);
-			$this->controller = "member";
-			$this->action = "login";
-			if(isset( $parts[1]))
-			{
+			$this->controller = "index";
+			$this->action = $parts[0];
+			if (isset($parts[1]) && $parts[1] !== '') {
 				$count_args = count($parts);
 				$k = 1;
 				$args = array();
-				for($i = 1; $i < $count_args; $i++)
-					$args[$k++] = $parts[$i]; 
+				for ($i = 1; $i < $count_args; $i++) {
+					$args[$k++] = $parts[$i];
+				}
 				$this->args = $args;
-			} 
-		}
-		elseif($parts[0] == "logout")
-		{
-			$this->controller = "admin";
-			$this->action = "logout";
-			if(isset( $parts[1]))
-			{
-				$count_args = count($parts);
-				$k = 1;
-				$args = array();
-				for($i = 1; $i < $count_args; $i++)
-					$args[$k++] = $parts[$i]; 
-				$this->args = $args;
+			} else {
+				$this->args = array();
 			}
 		}
 		//Router page

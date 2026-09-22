@@ -1,0 +1,451 @@
+HƯỚNG DẪN KHAI BÁO VÀ KIỂM TRA PHÂN QUYỀN MENU CARE IOC
+======================================================================
+
+1. MỤC ĐÍCH
+----------------------------------------------------------------------
+
+Hệ thống quản lý tài khoản và quyền menu riêng cho ba khu vực:
+
+- admin
+- backend
+- dashboard
+
+Quy tắc chung:
+
+- Menu được khai báo trong database.
+- Tài khoản chỉ nhìn thấy menu có quyền can_view = 1.
+- Quyền thao tác gồm: xem, thêm, sửa, xóa, import và export.
+- Menu cha tự hiển thị nếu tài khoản được cấp quyền xem một menu con.
+- Tài khoản ioc_users.is_admin = 1 là Super Admin, được toàn quyền trên
+  cả ba site và không cần khai báo quyền từng menu.
+- Ẩn menu trên giao diện không thay thế việc kiểm tra quyền trong controller
+  và API. Server luôn phải kiểm tra quyền trước khi đọc hoặc thay đổi dữ liệu.
+
+
+2. CÁC BẢNG DATABASE ĐANG SỬ DỤNG
+----------------------------------------------------------------------
+
+2.1. Bảng ioc_users
+
+Lưu thông tin tài khoản. Trường is_admin xác định Super Admin:
+
+- is_admin = 1: toàn quyền.
+- is_admin = 0: quyền được xác định theo site và menu.
+
+
+2.2. Bảng ioc_user_site_access
+
+Lưu quyền truy cập từng site của tài khoản.
+
+Các trường quan trọng:
+
+- user_id: ID tài khoản trong ioc_users.
+- site_code: admin, backend hoặc dashboard.
+- is_active: 1 là đang được phép truy cập.
+- deleted_at: phải NULL đối với quyền đang hoạt động.
+
+
+2.3. Bảng ioc_site_menus
+
+Lưu danh mục menu của ba site.
+
+Các trường quan trọng:
+
+- site_code: admin, backend hoặc dashboard.
+- menu_code: mã menu duy nhất và ổn định để kiểm tra quyền.
+- menu_name: tên hiển thị trên giao diện.
+- parent_id: ID menu cha; để NULL nếu là menu cấp cao nhất.
+- route: đường dẫn khi người dùng bấm menu.
+- icon: class biểu tượng của menu.
+- sort_order: thứ tự hiển thị.
+- is_active: 1 là menu đang hoạt động.
+
+Quy ước menu_code đề xuất:
+
+- admin.overview
+- admin.accounts
+- admin.accounts.admin
+- backend.outpatient
+- dashboard.overview
+
+Không dùng menu_name để kiểm tra quyền vì tên hiển thị có thể thay đổi.
+
+
+2.4. Bảng ioc_user_menu_permissions
+
+Lưu quyền thao tác chi tiết của từng tài khoản trên từng menu.
+
+Các trường quyền:
+
+- can_view: quyền xem menu/trang.
+- can_create: quyền thêm dữ liệu.
+- can_update: quyền sửa dữ liệu.
+- can_delete: quyền xóa dữ liệu.
+- can_import: quyền import dữ liệu.
+- can_export: quyền export dữ liệu.
+- is_active: trạng thái bản ghi quyền.
+
+
+3. KHAI BÁO MENU MỚI
+----------------------------------------------------------------------
+
+Luôn sử dụng kết nối utf8mb4 để tránh lỗi tiếng Việt:
+
+SET NAMES utf8mb4;
+
+Ví dụ thêm menu Quản lý thiết bị cho trang Admin:
+
+INSERT INTO ioc_site_menus (
+    site_code,
+    menu_code,
+    menu_name,
+    route,
+    icon,
+    sort_order,
+    is_active
+) VALUES (
+    'admin',
+    'admin.equipment',
+    'Quản lý thiết bị',
+    '/equipment',
+    'ph-desktop-tower',
+    70,
+    1
+);
+
+
+4. KHAI BÁO MENU CON
+----------------------------------------------------------------------
+
+Ví dụ thêm menu Máy tính bên dưới menu admin.equipment:
+
+INSERT INTO ioc_site_menus (
+    site_code,
+    menu_code,
+    menu_name,
+    parent_id,
+    route,
+    icon,
+    sort_order,
+    is_active
+)
+SELECT
+    'admin',
+    'admin.equipment.computers',
+    'Máy tính',
+    id,
+    '/equipment/computers',
+    'ph-desktop',
+    10,
+    1
+FROM ioc_site_menus
+WHERE site_code = 'admin'
+  AND menu_code = 'admin.equipment'
+LIMIT 1;
+
+
+5. CẤP QUYỀN TRUY CẬP SITE
+----------------------------------------------------------------------
+
+Ví dụ cấp cho user_id = 15 quyền truy cập trang Admin:
+
+INSERT INTO ioc_user_site_access (
+    user_id,
+    site_code,
+    is_active
+) VALUES (
+    15,
+    'admin',
+    1
+)
+ON DUPLICATE KEY UPDATE
+    is_active = 1,
+    deleted_at = NULL;
+
+Tài khoản thường phải có quyền site trước khi quyền menu có hiệu lực.
+
+
+6. CẤP QUYỀN MENU CHO TÀI KHOẢN
+----------------------------------------------------------------------
+
+Ví dụ user_id = 15 được xem, thêm, sửa và export menu thiết bị nhưng
+không được xóa hoặc import:
+
+INSERT INTO ioc_user_menu_permissions (
+    user_id,
+    menu_id,
+    can_view,
+    can_create,
+    can_update,
+    can_delete,
+    can_import,
+    can_export,
+    is_active
+)
+SELECT
+    15,
+    id,
+    1,
+    1,
+    1,
+    0,
+    0,
+    1,
+    1
+FROM ioc_site_menus
+WHERE site_code = 'admin'
+  AND menu_code = 'admin.equipment'
+LIMIT 1
+ON DUPLICATE KEY UPDATE
+    can_view = 1,
+    can_create = 1,
+    can_update = 1,
+    can_delete = 0,
+    can_import = 0,
+    can_export = 1,
+    is_active = 1;
+
+
+7. THU HỒI QUYỀN
+----------------------------------------------------------------------
+
+Thu hồi một quyền menu:
+
+UPDATE ioc_user_menu_permissions p
+INNER JOIN ioc_site_menus m ON m.id = p.menu_id
+SET p.is_active = 0
+WHERE p.user_id = 15
+  AND m.menu_code = 'admin.equipment';
+
+Thu hồi quyền truy cập site Admin:
+
+UPDATE ioc_user_site_access
+SET is_active = 0,
+    deleted_at = CURRENT_TIMESTAMP(6)
+WHERE user_id = 15
+  AND site_code = 'admin';
+
+
+8. HÀM KIỂM TRA QUYỀN
+----------------------------------------------------------------------
+
+Hàm dùng chung:
+
+$this->helper->userHasMenu($menuCode, $operation);
+
+Các operation hợp lệ:
+
+- view
+- create
+- update
+- delete
+- import
+- export
+
+Ví dụ:
+
+$this->helper->userHasMenu('admin.equipment', 'view');
+$this->helper->userHasMenu('admin.equipment', 'create');
+$this->helper->userHasMenu('admin.equipment', 'update');
+$this->helper->userHasMenu('admin.equipment', 'delete');
+$this->helper->userHasMenu('admin.equipment', 'import');
+$this->helper->userHasMenu('admin.equipment', 'export');
+
+Kết quả trả về:
+
+- true: có quyền.
+- false: không có quyền.
+
+
+9. HIỂN THỊ MENU TRONG TEMPLATE/ADMIN
+----------------------------------------------------------------------
+
+Frontend Admin chỉ khởi tạo và chỉnh sửa trong template/admin/.
+
+Ví dụ hiển thị menu khi tài khoản có quyền xem:
+
+<?php if ($this->helper->userHasMenu('admin.equipment', 'view')): ?>
+    <a href="<?php echo XC_URL; ?>/equipment">
+        Quản lý thiết bị
+    </a>
+<?php endif; ?>
+
+Ví dụ hiển thị nút thêm:
+
+<?php if ($this->helper->userHasMenu('admin.equipment', 'create')): ?>
+    <button type="button" id="btn-add-equipment">Thêm thiết bị</button>
+<?php endif; ?>
+
+Ví dụ hiển thị nút sửa và xóa:
+
+<?php if ($this->helper->userHasMenu('admin.equipment', 'update')): ?>
+    <button type="button" class="btn-edit">Sửa</button>
+<?php endif; ?>
+
+<?php if ($this->helper->userHasMenu('admin.equipment', 'delete')): ?>
+    <button type="button" class="btn-delete">Xóa</button>
+<?php endif; ?>
+
+
+10. LẤY DANH SÁCH MENU ĐỘNG
+----------------------------------------------------------------------
+
+Trong indexController:
+
+$this->view->data['adminMenus'] = $this->helper->getUserMenus('admin');
+
+Các site khác:
+
+$this->helper->getUserMenus('backend');
+$this->helper->getUserMenus('dashboard');
+
+Hàm chỉ trả về các menu đang hoạt động mà người dùng có quyền xem.
+Super Admin nhận toàn bộ menu đang hoạt động của site.
+
+
+11. KIỂM TRA QUYỀN TRONG INDEXCONTROLLER
+----------------------------------------------------------------------
+
+Trước khi hiển thị trang phải chặn truy cập trực tiếp bằng URL:
+
+public function equipment()
+{
+    $this->requireMenuPermission(
+        'admin.equipment',
+        'view',
+        XC_URL . '/'
+    );
+
+    $this->view->admintmp('equipment');
+}
+
+Không sử dụng adminController. Điều hướng và action hiển thị trang Admin
+được đặt trong indexController.
+
+
+12. KIỂM TRA QUYỀN TRONG APICONTROLLER
+----------------------------------------------------------------------
+
+API phải kiểm tra lại quyền trước khi query hoặc thay đổi database.
+
+Ví dụ kiểm tra quyền thêm:
+
+if (!$this->hasMenuPermission('admin.equipment', 'create')) {
+    $this->jsonResponse(
+        false,
+        'Bạn không có quyền thêm thiết bị.',
+        array(),
+        403
+    );
+    return;
+}
+
+Ví dụ kiểm tra quyền xóa:
+
+if (!$this->hasMenuPermission('admin.equipment', 'delete')) {
+    $this->jsonResponse(
+        false,
+        'Bạn không có quyền xóa thiết bị.',
+        array(),
+        403
+    );
+    return;
+}
+
+Sau đó API vẫn phải thực hiện:
+
+- Kiểm tra phương thức HTTP.
+- Xác thực session.
+- Kiểm tra CSRF theo cơ chế hiện có.
+- Validate lại toàn bộ dữ liệu phía máy chủ.
+- Chỉ trả JSON gồm success, message và data khi cần.
+- Không trả lỗi kỹ thuật hoặc thông tin nhạy cảm cho người dùng.
+
+
+13. QUY TRÌNH THÊM MỘT CHỨC NĂNG MỚI
+----------------------------------------------------------------------
+
+Bước 1: Khai báo menu trong ioc_site_menus.
+
+Bước 2: Cấp site cho tài khoản trong ioc_user_site_access.
+
+Bước 3: Cấp quyền menu trong ioc_user_menu_permissions.
+
+Bước 4: Trong indexController, gọi requireMenuPermission() trước khi
+hiển thị trang.
+
+Bước 5: Tạo giao diện tương ứng trong template/admin/.
+
+Bước 6: Chỉ hiển thị menu/nút thao tác khi userHasMenu() trả về true.
+
+Bước 7: Mọi thao tác thay đổi dữ liệu dùng jQuery AJAX gọi apiController.
+
+Bước 8: Trong apiController, kiểm tra lại quyền thao tác, CSRF và dữ liệu.
+
+Bước 9: Sau phản hồi AJAX, cập nhật giao diện và dùng Swal.fire để thông
+báo thành công hoặc thất bại; không dùng alert() cho thông báo nghiệp vụ.
+
+
+14. LƯU Ý VỀ FONT TIẾNG VIỆT
+----------------------------------------------------------------------
+
+- Database và bảng sử dụng utf8mb4, collation utf8mb4_unicode_ci.
+- Kết nối MySQL phải sử dụng utf8mb4.
+- File PHP, SQL và TXT phải được lưu theo UTF-8.
+- Khi chạy SQL bằng MySQL CLI nên sử dụng:
+
+  mysql --default-character-set=utf8mb4 ...
+
+- Nếu terminal làm hỏng tiếng Việt, có thể dùng literal HEX UTF-8 như bản
+  migration database/20260917_account_permissions.sql hiện tại.
+
+
+15. FILE TRIỂN KHAI LIÊN QUAN
+----------------------------------------------------------------------
+
+- application/general.class.php
+  + userHasMenu(): kiểm tra một quyền menu.
+  + getUserMenus(): lấy danh sách menu được phép hiển thị.
+
+- application/controller_base.class.php
+  + hasMenuPermission(): kiểm tra quyền cho controller/API.
+  + requireMenuPermission(): chặn truy cập trang khi không có quyền.
+
+- controller/indexController.php
+  + Nạp dữ liệu menu và xử lý action hiển thị trang.
+
+- controller/apiController.php
+  + Xác thực và xử lý các tác vụ thay đổi dữ liệu.
+
+- template/admin/index.php
+  + Hiển thị menu Admin lấy từ database.
+
+- template/admin/accounts.php
+  + Quản lý tài khoản và quyền theo ba site.
+
+- database/20260917_account_permissions.sql
+  + Cấu trúc và dữ liệu khởi tạo phân quyền.
+
+
+16. ĐẶT LẠI MẬT KHẨU TÀI KHOẢN
+----------------------------------------------------------------------
+
+Tại trang quản lý tài khoản, người có quyền update của menu tài khoản sẽ
+thấy nút biểu tượng khóa để đặt lại mật khẩu.
+
+Quy trình:
+
+- Chọn nút Đặt lại mật khẩu tại dòng tài khoản.
+- Nhập mật khẩu mới từ 8 đến 255 ký tự.
+- Nhập lại mật khẩu để xác nhận.
+- Frontend kiểm tra hai giá trị khớp nhau rồi gửi AJAX đến:
+
+  /api/resetAccountPassword
+
+- apiController kiểm tra session, CSRF, quyền update, site và tài khoản.
+- Mật khẩu được lưu bằng password_hash(); không lưu mật khẩu dạng rõ.
+- Chỉ Super Admin được đặt lại mật khẩu của một Super Admin.
+- Hệ thống không hiển thị hoặc khôi phục mật khẩu cũ.
+
+======================================================================
+KẾT THÚC HƯỚNG DẪN

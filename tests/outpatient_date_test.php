@@ -1,0 +1,78 @@
+<?php
+if (PHP_SAPI !== 'cli') exit;
+ini_set('session.save_path', sys_get_temp_dir());
+require_once dirname(__DIR__) . '/config.php';
+session_write_close();
+require_once dirname(__DIR__) . '/controller/libs/OutpatientService.php';
+$pdo = new PDO('mysql:host='.DB_HOST.';dbname='.DB_NAME.';charset=utf8mb4', DB_USER, DB_PASSWORD, array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
+// All writes stay in a connection-local temporary table, never the actual reports.
+$schema = $pdo->query('SHOW CREATE TABLE ioc_outpatient_daily')->fetch(PDO::FETCH_NUM)[1];
+$schema = preg_replace('/^  CONSTRAINT[^\n]+\n/m', '', $schema);
+$schema = str_replace(",\n)", "\n)", $schema);
+$pdo->exec(str_replace('CREATE TABLE', 'CREATE TEMPORARY TABLE', $schema));
+$service = new OutpatientService($pdo);
+$checks = 0;
+function verify($condition, $label) {
+    global $checks;
+    if (!$condition) throw new RuntimeException($label);
+    $checks++;
+}
+$today = date('Y-m-d');
+$dateId = $pdo->query("SELECT id FROM ioc_date WHERE full_date='$today'")->fetchColumn();
+$oldDate = date('Y-m-d', strtotime('first day of last month'));
+$oldId = $pdo->query("SELECT id FROM ioc_date WHERE full_date='$oldDate'")->fetchColumn();
+verify($dateId && $oldId, 'Date catalogue covers test dates');
+$department = $pdo->query('SELECT id FROM ioc_departments WHERE department_status=1 LIMIT 1')->fetchColumn();
+$payer = $pdo->query('SELECT id FROM ioc_payer_types WHERE payer_type_status=1 LIMIT 1')->fetchColumn();
+$input = array('report_date'=>$dateId,'department_id'=>$department,'payer_type_id'=>$payer,'visit_count'=>7);
+$saved = $service->save($input);
+verify($saved['ok'], 'Save today');
+$id = $saved['data']['id'];
+verify((int)$pdo->query('SELECT report_date FROM ioc_outpatient_daily')->fetchColumn() === (int)$dateId, 'Store date ID');
+verify(!$service->save($input)['ok'], 'Reject duplicate');
+verify(!$service->save(array_replace($input, array('report_date'=>$oldId)))['ok'], 'Reject old month for manual input');
+verify(!$service->save(array_replace($input, array('report_date'=>'2099-01-01')))['ok'], 'Reject string date in manual API');
+verify(!$service->save(array_replace($input, array('report_date'=>2147483647)))['ok'], 'Reject unknown ID');
+verify(!$service->save(array_replace($input, array('id'=>$id,'visit_count'=>-1)))['ok'], 'Reject negative count');
+verify($service->save(array_replace($input, array('id'=>$id,'visit_count'=>9)))['ok'], 'Edit existing date ID');
+verify(!$service->save(array_replace($input, array('id'=>999999)))['ok'], 'Reject missing record');
+$path = tempnam(sys_get_temp_dir(), 'outpatient_test_');
+try {
+    file_put_contents($path, "full_date,department_id,payer_type_id,visit_count\n$oldDate,$department,$payer,12\n2026-02-30,$department,$payer,3\n2099-01-01,$department,$payer,3\n");
+    $file = array('name'=>'test.csv','tmp_name'=>$path,'error'=>UPLOAD_ERR_OK,'size'=>filesize($path));
+    $import = $service->importFile($file);
+    verify($import['ok'] && strpos($import['message'], 'Đã import 1 bản ghi') !== false && strpos($import['message'], '2 dòng lỗi') !== false, 'Import resolves full_date and reports invalid/missing dates');
+    verify((int)$pdo->query("SELECT visit_count FROM ioc_outpatient_daily WHERE report_date=$oldId")->fetchColumn() === 12, 'Imported historical day maps to ID');
+    verify(!$service->importFile($file)['ok'], 'Repeated import does not overwrite');
+    $serial = (int)((strtotime($oldDate.' UTC') - strtotime('1899-12-30 UTC')) / 86400);
+    $pdo->exec("DELETE FROM ioc_outpatient_daily WHERE report_date=$oldId");
+    $zip = new ZipArchive();
+    $zip->open($path, ZipArchive::OVERWRITE);
+    $zip->addFromString('xl/worksheets/sheet1.xml', '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Ngày báo cáo</t></is></c><c r="B1" t="inlineStr"><is><t>Khoa/phòng</t></is></c><c r="C1" t="inlineStr"><is><t>Đối tượng thanh toán</t></is></c></row><row r="2"><c r="A2"><v>'.$serial.'</v></c><c r="B2"><v>'.$department.'</v></c><c r="C2"><v>'.$payer.'</v></c></row></sheetData></worksheet>');
+    $zip->close();
+    $file['name']='test.xlsx';
+    $import = $service->importFile($file);
+    verify($import['ok'], 'XLSX serial dates and Vietnamese headers: ' . $import['message']);
+} finally { unlink($path); }
+verify($service->delete($id)['ok'], 'Delete existing report');
+verify(!$service->delete($id)['ok'], 'Report missing delete');
+$record = null;
+$departments = $pdo->query('SELECT id,department_name FROM ioc_departments WHERE department_status=1')->fetchAll(PDO::FETCH_OBJ);
+$payerTypes = $pdo->query('SELECT id,payer_type_name FROM ioc_payer_types WHERE payer_type_status=1')->fetchAll(PDO::FETCH_OBJ);
+$reportDates = $pdo->query("SELECT id,full_date FROM ioc_date WHERE full_date BETWEEN '".date('Y-m-01')."' AND '".date('Y-m-t')."' ORDER BY full_date")->fetchAll(PDO::FETCH_OBJ);
+$csrf = 'test';
+$flash = array();
+ob_start();
+require dirname(__DIR__) . '/template/backend/outpatient-form.php';
+$html = ob_get_clean();
+$dom = new DOMDocument();
+libxml_use_internal_errors(true);
+$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+libxml_clear_errors();
+$xpath = new DOMXPath($dom);
+$options = $xpath->query('//select[@name="report_date"]/option[@value!=""]');
+verify($options->length === count($reportDates), 'Combobox contains only this month catalogue');
+$selected = $xpath->query('//select[@name="report_date"]/option[@selected]');
+verify($selected->length === 1 && (int)$selected->item(0)->getAttribute('value') === (int)$dateId, 'Default selection is today ID');
+verify($xpath->query('//input[@name="report_date"]')->length === 0, 'No free date input remains');
+echo "Passed $checks checks. Actual report data unchanged.\n";

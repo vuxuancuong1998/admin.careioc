@@ -1,805 +1,460 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hệ Thống Quản Trị IOC Điều Hành Y Tế Thông Minh</title>
-  
-  <!-- Tailwind CSS & Google Fonts -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Phosphor Icons -->
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              50: '#eff6ff',
-              100: '#dbeafe',
-              200: '#bfdbfe',
-              500: '#3b82f6',
-              600: '#2563eb', // Xanh dương chủ đạo
-              700: '#1d4ed8',
-              800: '#1e40af',
-              900: '#1e3a8a',
-            }
-          }
-        }
-      }
-    }
-  </script>
-
-  <style>
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .sidebar-transition {
-      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-  </style>
-</head>
-
-<body class="bg-[#f8fafc] text-slate-700 antialiased font-sans flex h-screen overflow-hidden">
-
-  <!-- OVERLAY CHO MOBILE -->
-  <div id="mobile-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 hidden lg:hidden"></div>
-
-  <!-- ==================== SIDEBAR TRÁI ==================== -->
-  <aside id="sidebar" class="sidebar-transition bg-white border-r border-blue-100 flex flex-col z-40 fixed lg:static h-full w-64 shadow-[2px_0_15px_-3px_rgba(0,0,0,0.04)]">
-    
-    <!-- Header Logo -->
-    <div class="h-16 flex items-center justify-between px-4 border-b border-blue-50">
-      <div class="flex items-center gap-3 overflow-hidden">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 to-blue-500 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-brand-500/20 shrink-0">
-          <i class="ph-bold ph-heartbeat"></i>
-        </div>
-        <div class="sidebar-text flex flex-col">
-          <span class="font-bold text-slate-800 leading-tight tracking-tight text-base">IOC HOSPITAL</span>
-          <span class="text-[11px] font-medium text-brand-600 tracking-wider">HỆ THỐNG ĐIỀU HÀNH</span>
-        </div>
-      </div>
-      <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
-        <i class="ph ph-x text-lg"></i>
-      </button>
-    </div>
-
-    <!-- Danh sách Menu -->
-    <div class="flex-1 overflow-y-auto no-scrollbar py-4 px-3 space-y-1">
-      
-      <div class="sidebar-text px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Điều Hành & Khám Chữa</div>
-
-      <a href="javascript:void(0)" onclick="switchTab('dashboard', this)" class="nav-item active flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 bg-brand-50 text-brand-700 font-semibold">
-        <i class="ph ph-squares-four text-xl text-brand-600 shrink-0"></i>
-        <span class="sidebar-text truncate">Tổng Quan IOC</span>
-      </a>
-
-      <a href="<?php echo XC_URL; ?>/admin/outpatient" class="nav-item flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700">
-        <i class="ph ph-stethoscope text-xl text-slate-400 shrink-0"></i>
-        <span class="sidebar-text truncate">Khám Bệnh & Tiếp Đón</span>
-      </a>
-
-      <a href="javascript:void(0)" onclick="switchTab('inpatient', this)" class="nav-item flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700">
-        <i class="ph ph-bed text-xl text-slate-400 shrink-0"></i>
-        <span class="sidebar-text truncate">Nội Trú & Giường Bệnh</span>
-      </a>
-
-      <!-- MENU DANH MỤC CÓ SUBMENU CON -->
-      <div class="pt-1">
-        <button onclick="toggleSubmenu('category-menu', this)" class="w-full flex items-center justify-between px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700 focus:outline-none">
-          <div class="flex items-center gap-3">
-            <i class="ph ph-folder-notch-open text-xl text-slate-400 shrink-0"></i>
-            <span class="sidebar-text truncate">Quản Lý Danh Mục</span>
-          </div>
-          <i class="ph ph-caret-down text-xs text-slate-400 transition-transform duration-200 submenu-arrow sidebar-text"></i>
-        </button>
-
-        <!-- Submenu -->
-        <div id="category-menu" class="hidden pl-8 pr-1 py-1 space-y-1">
-          <a href="javascript:void(0)" onclick="switchTab('category-departments', this)" class="subnav-item flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-brand-700 hover:bg-blue-50/80 transition">
-            <i class="ph ph-circle text-[7px] text-slate-300"></i>
-            <span class="sidebar-text">Khoa phòng</span>
-          </a>
-          <a href="javascript:void(0)" onclick="switchTab('category-beds', this)" class="subnav-item flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-brand-700 hover:bg-blue-50/80 transition">
-            <i class="ph ph-circle text-[7px] text-slate-300"></i>
-            <span class="sidebar-text">Giường bệnh</span>
-          </a>
-          <a href="javascript:void(0)" onclick="switchTab('category-staff', this)" class="subnav-item flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-brand-700 hover:bg-blue-50/80 transition">
-            <i class="ph ph-circle text-[7px] text-slate-300"></i>
-            <span class="sidebar-text">Nhân viên</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="sidebar-text px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Giám Sát & Hạ Tầng</div>
-
-      <a href="javascript:void(0)" onclick="switchTab('it-infra', this)" class="nav-item flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700">
-        <i class="ph ph-hard-drives text-xl text-slate-400 shrink-0"></i>
-        <span class="sidebar-text truncate">Hạ Tầng CNTT & Server</span>
-      </a>
-
-      <a href="javascript:void(0)" onclick="switchTab('security', this)" class="nav-item flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-slate-600 hover:bg-blue-50/60 hover:text-brand-700">
-        <i class="ph ph-shield-check text-xl text-slate-400 shrink-0"></i>
-        <span class="sidebar-text truncate">An Toàn Thông Tin (ATTT)</span>
-      </a>
-
-    </div>
-
-    <!-- Sync status -->
-    <div class="p-3 border-t border-blue-50">
-      <div class="sidebar-text flex items-center gap-2 p-2 rounded-xl bg-blue-50/60 text-xs text-brand-700 border border-blue-100">
-        <span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
-        <span class="font-medium">Data Sync: Realtime API</span>
-      </div>
-    </div>
-  </aside>
-
-  <!-- ==================== VÙNG NỘI DUNG CHÍNH (BÊN PHẢI) ==================== -->
-  <div class="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-    
-    <!-- Top Header Navigation Bar -->
-    <header class="h-16 bg-white border-b border-blue-100 flex items-center justify-between px-4 sm:px-6 z-20 shrink-0">
-      
-      <div class="flex items-center gap-3">
-        <button onclick="toggleSidebar()" class="p-2 rounded-xl text-slate-500 hover:bg-blue-50 hover:text-brand-600 transition-colors" title="Ẩn/Hiện menu">
-          <i class="ph ph-list text-xl font-bold"></i>
-        </button>
-        <div class="h-5 w-px bg-slate-200 hidden sm:block"></div>
-        <h1 id="page-title" class="text-base sm:text-lg font-bold text-slate-800 tracking-tight truncate">Tổng Quan IOC</h1>
-      </div>
-
-      <div class="flex items-center gap-3 sm:gap-4">
-        <!-- Search bar -->
-        <div class="relative hidden md:block w-64">
-          <input type="text" placeholder="Tìm kiếm nhanh khoa, bệnh nhân..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-500 focus:bg-white transition-all text-slate-700">
-          <i class="ph ph-magnifying-glass absolute left-3 top-2 text-slate-400 text-sm"></i>
-        </div>
-
-        <!-- Chuông thông báo -->
-        <button class="relative p-2 rounded-xl text-slate-500 hover:bg-blue-50 hover:text-brand-600 transition">
-          <i class="ph ph-bell text-xl"></i>
-          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
-        </button>
-
-        <!-- Dropdown User -->
-        <div class="relative">
-          <button onclick="toggleUserDropdown(event)" class="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-blue-50 transition focus:outline-none">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-700 to-blue-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm ring-2 ring-blue-100">
-              AD
-            </div>
-            <div class="hidden sm:flex flex-col text-left">
-              <span class="text-xs font-bold text-slate-800 leading-tight">Admin Hệ Thống</span>
-              <span class="text-[11px] text-brand-600 font-medium">ioc.admin@hospital.gov.vn</span>
-            </div>
-            <i class="ph ph-caret-down text-slate-400 text-xs hidden sm:block"></i>
-          </button>
-
-          <!-- Dropdown menu -->
-          <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-blue-100 py-1.5 z-50">
-            <div class="px-4 py-2 border-b border-slate-100">
-              <p class="text-xs text-slate-400">Tài khoản quản trị</p>
-              <p class="text-xs font-bold text-slate-800 truncate">Võ Văn Cường (Admin)</p>
-            </div>
-            
-            <div class="py-1">
-              <a href="javascript:void(0)" class="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-blue-50 hover:text-brand-600 transition">
-                <i class="ph ph-user text-base"></i> Thông tin cá nhân
-              </a>
-              <a href="javascript:void(0)" onclick="openChangePasswordModal()" class="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-blue-50 hover:text-brand-600 transition">
-                <i class="ph ph-key text-base text-amber-500"></i> Đổi mật khẩu
-              </a>
-            </div>
-
-            <div class="border-t border-slate-100 pt-1">
-              <button onclick="logoutAction()" class="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition text-left">
-                <i class="ph ph-sign-out text-base"></i> Đăng xuất hệ thống
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </header>
+<?php require_once('header.php'); ?>
 
     <!-- Main Content Container -->
-    <main class="flex-1 overflow-y-auto p-4 sm:p-6 no-scrollbar">
+    <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 no-scrollbar space-y-6">
       
-      <!-- TAB 1: TỔNG QUAN IOC DASHBOARD -->
-      <section id="tab-dashboard" class="tab-content space-y-6">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-xs font-medium text-slate-500">Lượt khám hôm nay</p>
-                <h3 class="text-2xl font-bold text-slate-800 mt-1">1,842</h3>
-              </div>
-              <div class="w-11 h-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-2xl">
+      <?php
+        // Tính toán lời chào theo thời gian trong ngày
+        $hour = (int) date('H');
+        if ($hour >= 5 && $hour < 11) {
+          $greetingTime = 'Chào buổi sáng';
+          $greetingIcon = 'ph-sun text-amber-300';
+        } elseif ($hour >= 11 && $hour < 14) {
+          $greetingTime = 'Chào buổi trưa';
+          $greetingIcon = 'ph-sun-dim text-amber-300';
+        } elseif ($hour >= 14 && $hour < 18) {
+          $greetingTime = 'Chào buổi chiều';
+          $greetingIcon = 'ph-sun-horizon text-orange-300';
+        } else {
+          $greetingTime = 'Chào buổi tối';
+          $greetingIcon = 'ph-moon-stars text-indigo-200';
+        }
+
+        $vnDays = array('Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy');
+        $currentDateStr = $vnDays[(int) date('w')] . ', ngày ' . date('d/m/Y');
+        
+        $uTotal = isset($userStats->total_users) ? (int) $userStats->total_users : 0;
+        $uActive = isset($userStats->active_users) ? (int) $userStats->active_users : 0;
+        $uAdmin = isset($userStats->admin_users) ? (int) $userStats->admin_users : 0;
+        
+        $dTotal = isset($deptStats->total_depts) ? (int) $deptStats->total_depts : 0;
+        $dActive = isset($deptStats->active_depts) ? (int) $deptStats->active_depts : 0;
+        $dBeds = isset($deptStats->total_beds) ? (int) $deptStats->total_beds : 0;
+
+        $sTotal = isset($systemStats->total_configs) ? (int) $systemStats->total_configs : 0;
+        $sActive = isset($systemStats->active_configs) ? (int) $systemStats->active_configs : 0;
+        $mTotal = isset($menuStats->total_menus) ? (int) $menuStats->total_menus : 0;
+      ?>
+
+      <!-- ==================== KHỐI LỜI CHÀO & BANNER TRUNG TÂM ==================== -->
+      <section class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-900 via-brand-700 to-blue-600 text-white p-6 sm:p-8 shadow-xl shadow-brand-900/10 border border-blue-400/20">
+        <!-- Hiệu ứng đồ họa nền nhẹ -->
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-blue-400/20 rounded-full blur-2xl pointer-events-none"></div>
+        
+        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div class="max-w-2xl space-y-3">
+            <!-- Badges trạng thái & ngày -->
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur-md border border-white/20 text-blue-50">
+                <i class="ph <?php echo $greetingIcon; ?> text-sm"></i>
+                <span><?php echo $currentDateStr; ?></span>
+              </span>
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-200">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Hệ thống Quản trị sẵn sàng</span>
+              </span>
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/15">
+                <i class="ph-bold ph-shield-check"></i> <?php echo htmlspecialchars($roleTitle, ENT_QUOTES, 'UTF-8'); ?>
+              </span>
+            </div>
+
+            <!-- Lời chào chính -->
+            <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-snug">
+              <?php echo $greetingTime; ?>, <span class="text-blue-100"><?php echo htmlspecialchars($currentFullName, ENT_QUOTES, 'UTF-8'); ?></span>! 👋
+            </h2>
+
+           
+          </div>
+
+          <!-- Lối tắt nhanh trong banner -->
+          <div class="flex flex-wrap sm:flex-nowrap lg:flex-col gap-2.5 shrink-0">
+            <a href="<?php echo XC_URL; ?>/accounts/admin" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-brand-700 hover:bg-blue-50 text-xs font-bold shadow-lg shadow-black/10 transition group">
+              <i class="ph-bold ph-user-gear text-base group-hover:scale-110 transition-transform"></i>
+              <span>Quản lý Tài khoản</span>
+            </a>
+            <a href="<?php echo XC_URL; ?>/departments" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md text-white border border-white/20 text-xs font-bold transition group">
+              <i class="ph-bold ph-buildings text-base group-hover:scale-110 transition-transform"></i>
+              <span>Danh mục Khoa phòng</span>
+            </a>
+            <a href="<?php echo XC_URL; ?>/system" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white/90 border border-white/15 text-xs font-medium transition">
+              <i class="ph ph-sliders-horizontal text-base"></i>
+              <span>Tham số hệ thống</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== CÁC THẺ THỐNG KÊ QUẢN TRỊ ==================== -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        
+        <!-- THẺ 1: LƯỢNG USER & TÀI KHOẢN -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Tài khoản người dùng</span>
+              <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl group-hover:bg-brand-600 group-hover:text-white transition-colors shadow-xs">
                 <i class="ph-bold ph-users-three"></i>
               </div>
             </div>
-            <p class="mt-3 text-xs text-brand-600 font-semibold flex items-center gap-1">
-              <i class="ph-bold ph-arrow-up-right"></i> +8.4% so với hôm qua
+            
+            <div class="flex items-baseline gap-2">
+              <h3 class="text-3xl font-extrabold text-slate-900 tracking-tight"><?php echo number_format($uTotal); ?></h3>
+              <span class="text-xs font-semibold text-slate-400">tài khoản</span>
+            </div>
+
+            <p class="mt-2 text-xs text-slate-600 flex items-center gap-1.5 font-medium">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span><strong><?php echo $uActive; ?></strong> đang hoạt động</span>
+              <span class="text-slate-300">•</span>
+              <span class="text-amber-600 font-semibold"><?php echo $uAdmin; ?> Admin</span>
             </p>
           </div>
 
-          <div class="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-xs font-medium text-slate-500">Công suất giường viện</p>
-                <h3 class="text-2xl font-bold text-slate-800 mt-1">94.8%</h3>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <div class="flex items-center gap-1.5 text-slate-500">
+              <span class="px-1.5 py-0.5 rounded bg-blue-50 text-brand-700 font-semibold">Adm: <?php echo isset($siteUserCounts['admin']) ? $siteUserCounts['admin'] : 0; ?></span>
+              <span class="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-semibold">DB: <?php echo isset($siteUserCounts['dashboard']) ? $siteUserCounts['dashboard'] : 0; ?></span>
+              <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">BE: <?php echo isset($siteUserCounts['backend']) ? $siteUserCounts['backend'] : 0; ?></span>
+            </div>
+            <a href="<?php echo XC_URL; ?>/accounts/admin" class="font-bold text-brand-600 hover:text-brand-700 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              Chi tiết <i class="ph ph-caret-right"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- THẺ 2: KHOA / PHÒNG BỆNH VIỆN -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Khoa / Phòng trực thuộc</span>
+              <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-xs">
+                <i class="ph-bold ph-buildings"></i>
               </div>
-              <div class="w-11 h-11 rounded-xl bg-blue-50 text-brand-600 flex items-center justify-center text-2xl">
+            </div>
+            
+            <div class="flex items-baseline gap-2">
+              <h3 class="text-3xl font-extrabold text-slate-900 tracking-tight"><?php echo number_format($dTotal); ?></h3>
+              <span class="text-xs font-semibold text-slate-400">khoa / phòng</span>
+            </div>
+
+            <p class="mt-2 text-xs text-slate-600 flex items-center gap-1.5 font-medium">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span><strong><?php echo $dActive; ?></strong> khoa đang hoạt động (100%)</span>
+            </p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500 font-medium truncate">BVĐK Khu vực Đăk Tô</span>
+            <a href="<?php echo XC_URL; ?>/departments" class="font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              Quản lý <i class="ph ph-caret-right"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- THẺ 3: CHỈ TIÊU GIƯỜNG BỆNH KHOA -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Chỉ tiêu Giường điều trị</span>
+              <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors shadow-xs">
                 <i class="ph-bold ph-bed"></i>
               </div>
             </div>
-            <p class="mt-3 text-xs text-amber-500 font-semibold">568 / 600 giường đang sử dụng</p>
+            
+            <div class="flex items-baseline gap-2">
+              <h3 class="text-3xl font-extrabold text-slate-900 tracking-tight"><?php echo number_format($dBeds); ?></h3>
+              <span class="text-xs font-semibold text-slate-400">giường bệnh</span>
+            </div>
+
+            <p class="mt-2 text-xs text-slate-600 flex items-center gap-1.5 font-medium">
+              <i class="ph ph-check-circle text-indigo-500"></i>
+              <span>Tổng chỉ tiêu kế hoạch phân bổ</span>
+            </p>
           </div>
 
-          <div class="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm">
-            <div class="flex items-center justify-between">
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500 font-medium">Điều phối công suất</span>
+            <a href="<?php echo XC_URL; ?>/departments" class="font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              Xem chỉ tiêu <i class="ph ph-caret-right"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- THẺ 4: CẤU HÌNH & THAM SỐ HỆ THỐNG -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all group flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Tham số & Menu hệ thống</span>
+              <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl group-hover:bg-purple-600 group-hover:text-white transition-colors shadow-xs">
+                <i class="ph-bold ph-sliders-horizontal"></i>
+              </div>
+            </div>
+            
+            <div class="flex items-baseline gap-2">
+              <h3 class="text-3xl font-extrabold text-slate-900 tracking-tight"><?php echo number_format($sTotal); ?></h3>
+              <span class="text-xs font-semibold text-slate-400">tham số</span>
+            </div>
+
+            <p class="mt-2 text-xs text-slate-600 flex items-center gap-1.5 font-medium">
+              <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+              <span><strong><?php echo $sActive; ?></strong> tham số bật • <strong><?php echo $mTotal; ?></strong> menu</span>
+            </p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500 font-medium">Tích hợp LIS / RIS</span>
+            <a href="<?php echo XC_URL; ?>/system" class="font-bold text-purple-600 hover:text-purple-700 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              Cấu hình <i class="ph ph-caret-right"></i>
+            </a>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ==================== KHỐI NỘI DUNG 2 CỘT: NGƯỜI DÙNG & KHOA PHÒNG ==================== -->
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- CỘT TRÁI (8 CỘT): DANH SÁCH TÀI KHOẢN NGƯỜI DÙNG -->
+        <div class="lg:col-span-8 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+          <div class="p-5 sm:px-6 sm:py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-blue-50 text-brand-600 flex items-center justify-center font-bold text-sm">
+                <i class="ph-bold ph-user-list"></i>
+              </div>
               <div>
-                <p class="text-xs font-medium text-slate-500">Tỷ lệ Bệnh Án Điện Tử</p>
-                <h3 class="text-2xl font-bold text-slate-800 mt-1">98.2%</h3>
-              </div>
-              <div class="w-11 h-11 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-2xl">
-                <i class="ph-bold ph-file-arrow-up"></i>
+                <h3 class="font-bold text-sm sm:text-base text-slate-800 leading-tight">Danh Sách Tài Khoản Người Dùng</h3>
+                <p class="text-[11px] text-slate-500">Các tài khoản được phân quyền truy cập và điều hành</p>
               </div>
             </div>
-            <p class="mt-3 text-xs text-brand-600 font-semibold">Ký số đúng hạn: 96.5%</p>
-          </div>
-
-          <div class="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-xs font-medium text-slate-500">Trạng thái Server / HIS</p>
-                <h3 class="text-2xl font-bold text-emerald-600 mt-1">Online</h3>
-              </div>
-              <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">
-                <i class="ph-bold ph-shield-check"></i>
-              </div>
+            
+            <div class="flex items-center gap-2">
+              <a href="<?php echo XC_URL; ?>/accounts/admin" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-brand-700 bg-blue-50 hover:bg-blue-100 transition">
+                <i class="ph-bold ph-plus"></i>
+                <span class="hidden sm:inline">Phân quyền</span>
+              </a>
+              <a href="<?php echo XC_URL; ?>/accounts/admin" class="text-xs font-bold text-slate-500 hover:text-brand-600 px-2 py-1.5 transition">
+                Tất cả (<?php echo $uTotal; ?>) →
+              </a>
             </div>
-            <p class="mt-3 text-xs text-slate-500 font-medium">Uptime: 99.98% (Độ trễ 14ms)</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ==================== TAB SUBMENU 1: KHOA PHÒNG ==================== -->
-      <section id="tab-category-departments" class="tab-content hidden space-y-5">
-        <!-- Control bar -->
-        <div class="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div class="flex items-center gap-2 w-full sm:w-auto">
-            <div class="relative w-full sm:w-72">
-              <input type="text" placeholder="Tìm theo mã hoặc tên khoa..." class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500">
-              <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
-            </div>
-            <select class="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-600 focus:outline-none">
-              <option value="">Tất cả loại khoa</option>
-              <option value="inpatient">Nội trú</option>
-              <option value="outpatient">Ngoại trú</option>
-              <option value="paraclinical">Cận lâm sàng</option>
-            </select>
           </div>
 
-          <button onclick="handleAction('Thêm mới Khoa Phòng')" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-brand-500/20 transition">
-            <i class="ph-bold ph-plus"></i> Thêm Khoa Phòng
-          </button>
-        </div>
-
-        <!-- Data Table Khoa Phòng -->
-        <div class="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
+          <div class="overflow-x-auto flex-1">
+            <table class="w-full text-left border-collapse text-xs">
               <thead>
-                <tr class="bg-blue-50/50 text-slate-500 border-b border-blue-100 font-semibold uppercase text-[11px] tracking-wider">
-                  <th class="py-3.5 px-4">Mã Khoa</th>
-                  <th class="py-3.5 px-4">Tên Khoa / Phòng</th>
-                  <th class="py-3.5 px-4">Phân Loại</th>
-                  <th class="py-3.5 px-4 text-center">Giường Kế Hoạch</th>
-                  <th class="py-3.5 px-4 text-center">Giường Thực Kê</th>
-                  <th class="py-3.5 px-4 text-center">Trạng Thái</th>
-                  <th class="py-3.5 px-4 text-center w-28">Thao Tác</th>
+                <tr class="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-4">Người dùng</th>
+                  <th class="py-3 px-4">Liên hệ</th>
+                  <th class="py-3 px-4">Vai trò</th>
+                  <th class="py-3 px-4">Phân hệ truy cập</th>
+                  <th class="py-3 px-4">Đăng nhập cuối</th>
+                  <th class="py-3 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">KKB-01</td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">Khoa Khám Bệnh Đa Khoa</td>
-                  <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-full text-[11px] bg-slate-100 text-slate-600">Ngoại trú</span></td>
-                  <td class="py-3.5 px-4 text-center">0</td>
-                  <td class="py-3.5 px-4 text-center">0</td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-600 font-semibold">Hoạt động</span></td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem chi tiết Khoa: KKB-01')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Chỉnh sửa Khoa: KKB-01')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Xóa Khoa: KKB-01')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">KNT-TM</td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">Khoa Nội Tim Mạch Can Thiệp</td>
-                  <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-full text-[11px] bg-blue-100 text-brand-700 font-semibold">Nội trú</span></td>
-                  <td class="py-3.5 px-4 text-center font-bold">50</td>
-                  <td class="py-3.5 px-4 text-center font-bold text-brand-700">62</td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-600 font-semibold">Hoạt động</span></td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem chi tiết Khoa: KNT-TM')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Chỉnh sửa Khoa: KNT-TM')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Xóa Khoa: KNT-TM')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">KHSCC</td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">Khoa Hồi Sức Cấp Cứu & Chống Độc</td>
-                  <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-full text-[11px] bg-blue-100 text-brand-700 font-semibold">Nội trú</span></td>
-                  <td class="py-3.5 px-4 text-center font-bold">30</td>
-                  <td class="py-3.5 px-4 text-center font-bold text-brand-700">35</td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-600 font-semibold">Hoạt động</span></td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem chi tiết Khoa: KHSCC')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Chỉnh sửa Khoa: KHSCC')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Xóa Khoa: KHSCC')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">CLS-HA</td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">Khoa Chẩn Đoán Hình Ảnh (PACS/RIS)</td>
-                  <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-full text-[11px] bg-purple-100 text-purple-700">Cận lâm sàng</span></td>
-                  <td class="py-3.5 px-4 text-center">0</td>
-                  <td class="py-3.5 px-4 text-center">0</td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-600 font-semibold">Hoạt động</span></td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem chi tiết Khoa: CLS-HA')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Chỉnh sửa Khoa: CLS-HA')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Xóa Khoa: CLS-HA')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
+              <tbody class="divide-y divide-slate-100">
+                <?php if (!empty($recentUsers) && is_array($recentUsers)): ?>
+                  <?php foreach ($recentUsers as $u): ?>
+                    <?php
+                      // Chữ cái đại diện
+                      $name = !empty($u->full_name) ? $u->full_name : $u->username;
+                      $words = preg_split('/\s+/u', trim($name));
+                      $initial = count($words) >= 2 
+                        ? mb_strtoupper(mb_substr($words[0], 0, 1, 'UTF-8') . mb_substr(end($words), 0, 1, 'UTF-8'), 'UTF-8')
+                        : mb_strtoupper(mb_substr($name, 0, 2, 'UTF-8'), 'UTF-8');
+                      $isAdmin = (int) $u->is_admin === 1;
+                    ?>
+                    <tr class="hover:bg-blue-50/40 transition-colors group">
+                      <td class="py-3 px-4">
+                        <div class="flex items-center gap-2.5">
+                          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-700 to-blue-500 text-white font-bold text-[11px] flex items-center justify-center shrink-0 shadow-xs uppercase select-none">
+                            <?php echo htmlspecialchars($initial, ENT_QUOTES, 'UTF-8'); ?>
+                          </div>
+                          <div class="min-w-0">
+                            <div class="font-bold text-slate-800 truncate max-w-[130px] group-hover:text-brand-600 transition">
+                              <?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+                            <div class="text-[10px] text-slate-400 font-medium">@<?php echo htmlspecialchars($u->username, ENT_QUOTES, 'UTF-8'); ?></div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td class="py-3 px-4">
+                        <div class="space-y-0.5">
+                          <div class="text-slate-700 font-medium truncate max-w-[150px]"><?php echo htmlspecialchars($u->email ?: '—', ENT_QUOTES, 'UTF-8'); ?></div>
+                          <?php if (!empty($u->phone)): ?>
+                            <div class="text-[10px] text-slate-400 font-medium"><?php echo htmlspecialchars($u->phone, ENT_QUOTES, 'UTF-8'); ?></div>
+                          <?php endif; ?>
+                        </div>
+                      </td>
+
+                      <td class="py-3 px-4">
+                        <?php if ($isAdmin): ?>
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            <i class="ph-bold ph-crown text-[10px]"></i> Super Admin
+                          </span>
+                        <?php else: ?>
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-brand-700 border border-blue-200">
+                            <i class="ph-bold ph-shield-check text-[10px]"></i> Quản trị
+                          </span>
+                        <?php endif; ?>
+                      </td>
+
+                      <td class="py-3 px-4">
+                        <div class="flex flex-wrap gap-1">
+                          <?php
+                            $sites = !empty($u->site_codes) ? explode(', ', $u->site_codes) : array();
+                            if ($isAdmin) {
+                              $sites = array('admin', 'dashboard', 'backend');
+                            }
+                          ?>
+                          <?php foreach ($sites as $sc): ?>
+                            <span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                              <?php echo htmlspecialchars(strtoupper($sc), ENT_QUOTES, 'UTF-8'); ?>
+                            </span>
+                          <?php endforeach; ?>
+                          <?php if (empty($sites)): ?>
+                            <span class="text-slate-400 text-[10px]">Chưa gán</span>
+                          <?php endif; ?>
+                        </div>
+                      </td>
+
+                      <td class="py-3 px-4 text-slate-500 whitespace-nowrap text-[11px]">
+                        <?php if (!empty($u->last_login_at)): ?>
+                          <span><?php echo date('H:i - d/m/Y', strtotime($u->last_login_at)); ?></span>
+                        <?php else: ?>
+                          <span class="text-slate-400">Chưa đăng nhập</span>
+                        <?php endif; ?>
+                      </td>
+
+                      <td class="py-3 px-4 text-right">
+                        <a href="<?php echo XC_URL; ?>/accounts/admin" class="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-blue-50 transition inline-block" title="Xem phân quyền">
+                          <i class="ph-bold ph-arrow-square-out text-base"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  <?php endforeach; ?>
+                <?php else: ?>
+                  <tr>
+                    <td colspan="6" class="py-8 text-center text-slate-400">Chưa có người dùng nào được tạo trong hệ thống.</td>
+                  </tr>
+                <?php endif; ?>
               </tbody>
             </table>
           </div>
-          <!-- Pagination -->
-          <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Hiển thị 1 - 4 trên tổng số 18 khoa phòng</span>
-            <div class="flex gap-1">
-              <button class="px-2.5 py-1 border rounded-lg hover:bg-slate-50 disabled:opacity-50" disabled>Trước</button>
-              <button class="px-2.5 py-1 border rounded-lg bg-brand-600 text-white font-bold">1</button>
-              <button class="px-2.5 py-1 border rounded-lg hover:bg-slate-50">2</button>
-              <button class="px-2.5 py-1 border rounded-lg hover:bg-slate-50">Sau</button>
-            </div>
+
+          <div class="p-3 bg-slate-50/60 border-t border-slate-100 text-center">
+            <a href="<?php echo XC_URL; ?>/accounts/admin" class="text-xs font-bold text-brand-600 hover:text-brand-700">
+              Quản lý toàn bộ tài khoản và phân quyền chi tiết →
+            </a>
           </div>
         </div>
-      </section>
 
-      <!-- ==================== TAB SUBMENU 2: GIƯỜNG BỆNH ==================== -->
-      <section id="tab-category-beds" class="tab-content hidden space-y-5">
-        <div class="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div class="flex items-center gap-2 w-full sm:w-auto">
-            <div class="relative w-full sm:w-72">
-              <input type="text" placeholder="Tìm theo mã giường, số phòng..." class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500">
-              <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
+        <!-- CỘT PHẢI (4 CỘT): KHOA PHÒNG & LỐI TẮT -->
+        <div class="lg:col-span-4 space-y-6">
+          
+          <!-- HỘP 1: KHOA PHÒNG & CHỈ TIÊU GIƯỜNG -->
+          <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div class="flex items-center gap-2">
+                <i class="ph-bold ph-bed text-base text-indigo-600"></i>
+                <h3 class="font-bold text-sm text-slate-800">Khoa Phòng Trọng Điểm</h3>
+              </div>
+              <a href="<?php echo XC_URL; ?>/departments" class="text-xs font-bold text-indigo-600 hover:underline">
+                Xem tất cả →
+              </a>
             </div>
-            <select class="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-600 focus:outline-none">
-              <option value="">Tất cả trạng thái</option>
-              <option value="occupied">Đang nằm</option>
-              <option value="available">Giường trống</option>
-              <option value="maintenance">Bảo trì</option>
-            </select>
-          </div>
 
-          <button onclick="handleAction('Thêm Giường Mới')" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-brand-500/20 transition">
-            <i class="ph-bold ph-plus"></i> Thêm Giường Bệnh
-          </button>
-        </div>
+            <div class="p-4 space-y-2.5">
+              <?php if (!empty($topDepts) && is_array($topDepts)): ?>
+                <?php foreach ($topDepts as $dept): ?>
+                  <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 border border-slate-100/70 transition">
+                    <div class="min-w-0 flex-1 pr-2">
+                      <div class="font-bold text-xs text-slate-800 truncate">
+                        <?php echo htmlspecialchars($dept->department_name, ENT_QUOTES, 'UTF-8'); ?>
+                      </div>
+                      <div class="text-[10px] text-slate-400 font-medium">Mã: <?php echo htmlspecialchars($dept->department_code, ENT_QUOTES, 'UTF-8'); ?></div>
+                    </div>
+                    <div class="shrink-0 flex items-center gap-1.5">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        <?php echo (int) $dept->department_bed; ?> <span class="text-[10px] font-normal ml-0.5">giường</span>
+                      </span>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <div class="text-xs text-slate-400 py-4 text-center">Chưa có khoa phòng nào.</div>
+              <?php endif; ?>
+            </div>
 
-        <!-- Data Table Giường Bệnh -->
-        <div class="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr class="bg-blue-50/50 text-slate-500 border-b border-blue-100 font-semibold uppercase text-[11px] tracking-wider">
-                  <th class="py-3.5 px-4">Mã Giường</th>
-                  <th class="py-3.5 px-4">Khoa Trực Thuộc</th>
-                  <th class="py-3.5 px-4">Số Phòng</th>
-                  <th class="py-3.5 px-4">Loại Giường</th>
-                  <th class="py-3.5 px-4 text-center">Trạng Thái</th>
-                  <th class="py-3.5 px-4 text-center">Bệnh Nhân Hiện Tại</th>
-                  <th class="py-3.5 px-4 text-center w-28">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">P201-G01</td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">Khoa Nội Tim Mạch</td>
-                  <td class="py-3.5 px-4">Phòng 201 (Khu A)</td>
-                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">Tiêu chuẩn</span></td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-1 rounded-full text-[11px] bg-rose-50 text-rose-600 font-semibold">Đang nằm</span></td>
-                  <td class="py-3.5 px-4 text-center font-bold text-slate-800">Nguyễn Văn Bình (PID: 108422)</td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem chi tiết Giường: P201-G01')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Chỉnh sửa Giường: P201-G01')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Xóa Giường: P201-G01')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">P201-G02</td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">Khoa Nội Tim Mạch</td>
-                  <td class="py-3.5 px-4">Phòng 201 (Khu A)</td>
-                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">Tiêu chuẩn</span></td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-1 rounded-full text-[11px] bg-emerald-50 text-emerald-600 font-semibold">Giường trống</span></td>
-                  <td class="py-3.5 px-4 text-center text-slate-400 font-normal">-- Không có --</td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem chi tiết Giường: P201-G02')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Chỉnh sửa Giường: P201-G02')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Xóa Giường: P201-G02')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">ICU-G05</td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">Hồi Sức Cấp Cứu</td>
-                  <td class="py-3.5 px-4">Phòng Hồi sức đặc biệt</td>
-                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-semibold">ICU Đa năng</span></td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-1 rounded-full text-[11px] bg-rose-50 text-rose-600 font-semibold">Đang nằm</span></td>
-                  <td class="py-3.5 px-4 text-center font-bold text-slate-800">Trần Thị Mai (PID: 108511)</td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem chi tiết Giường: ICU-G05')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Chỉnh sửa Giường: ICU-G05')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Xóa Giường: ICU-G05')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">VIP-G01</td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">Khoa Ngoại Tiêu Hóa</td>
-                  <td class="py-3.5 px-4">Phòng Yêu cầu VIP 1</td>
-                  <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold">Theo yêu cầu</span></td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2.5 py-1 rounded-full text-[11px] bg-amber-50 text-amber-600 font-semibold">Bảo dưỡng</span></td>
-                  <td class="py-3.5 px-4 text-center text-slate-400 font-normal">-- Tạm khóa --</td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem chi tiết Giường: VIP-G01')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Chỉnh sửa Giường: VIP-G01')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Xóa Giường: VIP-G01')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Hiển thị 1 - 4 trên tổng số 600 giường</span>
-            <div class="flex gap-1">
-              <button class="px-2.5 py-1 border rounded-lg bg-brand-600 text-white font-bold">1</button>
-              <button class="px-2.5 py-1 border rounded-lg hover:bg-slate-50">2</button>
-              <button class="px-2.5 py-1 border rounded-lg hover:bg-slate-50">...</button>
-              <button class="px-2.5 py-1 border rounded-lg hover:bg-slate-50">150</button>
+            <div class="px-4 py-3 bg-indigo-50/50 border-t border-indigo-100/60 flex items-center justify-between text-xs">
+              <span class="text-slate-600 font-medium">Tổng chỉ tiêu kế hoạch:</span>
+              <span class="font-bold text-indigo-700 text-sm"><?php echo number_format($dBeds); ?> giường</span>
             </div>
           </div>
-        </div>
-      </section>
 
-      <!-- ==================== TAB SUBMENU 3: NHÂN VIÊN ==================== -->
-      <section id="tab-category-staff" class="tab-content hidden space-y-5">
-        <div class="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div class="flex items-center gap-2 w-full sm:w-auto">
-            <div class="relative w-full sm:w-72">
-              <input type="text" placeholder="Tìm theo tên, mã NV, CCHN..." class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500">
-              <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
+          <!-- HỘP 2: LỐI TẮT QUẢN TRỊ NHANH -->
+          <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-3.5">
+            <div class="flex items-center gap-2 text-slate-800 font-bold text-sm">
+              <i class="ph-bold ph-lightning text-amber-500"></i>
+              <h4>Lối Tắt Chức Năng</h4>
             </div>
-            <select class="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-600 focus:outline-none">
-              <option value="">Tất cả chức vụ</option>
-              <option value="doctor">Bác sĩ</option>
-              <option value="nurse">Điều dưỡng</option>
-              <option value="tech">Kỹ thuật viên</option>
-            </select>
-          </div>
 
-          <button onclick="handleAction('Thêm Nhân Viên Mới')" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-brand-500/20 transition">
-            <i class="ph-bold ph-user-plus"></i> Thêm Nhân Viên
-          </button>
-        </div>
+            <div class="grid grid-cols-1 gap-2 text-xs">
+              <a href="<?php echo XC_URL; ?>/accounts/admin" class="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-brand-700 transition group border border-slate-100">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-lg bg-blue-100/70 text-brand-600 flex items-center justify-center text-sm">
+                    <i class="ph-bold ph-user-circle-gear"></i>
+                  </div>
+                  <span class="font-semibold text-slate-700 group-hover:text-brand-700">Tài khoản Quản trị (Admin)</span>
+                </div>
+                <i class="ph ph-caret-right text-slate-400 group-hover:text-brand-600 transition"></i>
+              </a>
 
-        <!-- Data Table Nhân Viên -->
-        <div class="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr class="bg-blue-50/50 text-slate-500 border-b border-blue-100 font-semibold uppercase text-[11px] tracking-wider">
-                  <th class="py-3.5 px-4">Mã NV</th>
-                  <th class="py-3.5 px-4">Họ và Tên</th>
-                  <th class="py-3.5 px-4">Khoa / Bộ Phận</th>
-                  <th class="py-3.5 px-4">Chức Danh</th>
-                  <th class="py-3.5 px-4">Số CCHN / Ký Số</th>
-                  <th class="py-3.5 px-4 text-center">Trạng Thái</th>
-                  <th class="py-3.5 px-4 text-center w-28">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">BS-0089</td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center gap-2.5">
-                      <div class="w-8 h-8 rounded-full bg-blue-100 text-brand-700 flex items-center justify-center font-bold text-xs">
-                        TQ
-                      </div>
-                      <div>
-                        <p class="font-bold text-slate-800">TS.BS Trần Quốc Tuấn</p>
-                        <p class="text-[11px] text-slate-400">tuantq@hospital.gov.vn</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-700">Khoa Nội Tim Mạch</td>
-                  <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-md text-[11px] bg-blue-50 text-brand-700 font-semibold">Trưởng Khoa</span></td>
-                  <td class="py-3.5 px-4">
-                    <span class="font-mono text-slate-600">001248/BYT-CCHN</span>
-                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1.5" title="Đã cấu hình chữ ký số HSM"></span>
-                  </td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-600 font-semibold">Đang làm việc</span></td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem hồ sơ: TS.BS Trần Quốc Tuấn')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Sửa thông tin: TS.BS Trần Quốc Tuấn')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Khóa/Xóa NV: TS.BS Trần Quốc Tuấn')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">DD-0142</td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center gap-2.5">
-                      <div class="w-8 h-8 rounded-full bg-pink-100 text-pink-700 flex items-center justify-center font-bold text-xs">
-                        MH
-                      </div>
-                      <div>
-                        <p class="font-bold text-slate-800">CNĐD. Lê Mỹ Hạnh</p>
-                        <p class="text-[11px] text-slate-400">hanhlm@hospital.gov.vn</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-700">Hồi Sức Cấp Cứu</td>
-                  <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-md text-[11px] bg-slate-100 text-slate-700 font-medium">Điều dưỡng chính</span></td>
-                  <td class="py-3.5 px-4"><span class="font-mono text-slate-600">009842/BYT-CCHN</span></td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-600 font-semibold">Đang làm việc</span></td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem hồ sơ: Lê Mỹ Hạnh')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Sửa thông tin: Lê Mỹ Hạnh')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Khóa/Xóa NV: Lê Mỹ Hạnh')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="hover:bg-blue-50/30 transition">
-                  <td class="py-3.5 px-4 font-bold text-brand-700">IT-0005</td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center gap-2.5">
-                      <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
-                        VC
-                      </div>
-                      <div>
-                        <p class="font-bold text-slate-800">KS. Vũ Xuân Cường</p>
-                        <p class="text-[11px] text-slate-400">cuongvx@hospital.gov.vn</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="py-3.5 px-4 font-semibold text-slate-700">Phòng CNTT & Chuyển Đổi Số</td>
-                  <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-md text-[11px] bg-purple-50 text-purple-700 font-semibold">Quản trị DB/IOC</span></td>
-                  <td class="py-3.5 px-4"><span class="font-mono text-slate-400">-- N/A --</span></td>
-                  <td class="py-3.5 px-4 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-600 font-semibold">Đang làm việc</span></td>
-                  <td class="py-3.5 px-4">
-                    <div class="flex items-center justify-center gap-1.5 text-base">
-                      <button onclick="handleAction('Xem hồ sơ: Vũ Xuân Cường')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Xem chi tiết"><i class="ph ph-eye"></i></button>
-                      <button onclick="handleAction('Sửa thông tin: Vũ Xuân Cường')" class="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition" title="Sửa"><i class="ph ph-pencil-simple"></i></button>
-                      <button onclick="handleAction('Khóa/Xóa NV: Vũ Xuân Cường')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Xóa"><i class="ph ph-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Hiển thị 1 - 3 trên tổng số 325 cán bộ nhân viên</span>
-            <div class="flex gap-1">
-              <button class="px-2.5 py-1 border rounded-lg bg-brand-600 text-white font-bold">1</button>
-              <button class="px-2.5 py-1 border rounded-lg hover:bg-slate-50">2</button>
-              <button class="px-2.5 py-1 border rounded-lg hover:bg-slate-50">Sau</button>
+              <a href="<?php echo XC_URL; ?>/accounts/dashboard" class="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-sky-50 hover:text-sky-700 transition group border border-slate-100">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-lg bg-sky-100/70 text-sky-600 flex items-center justify-center text-sm">
+                    <i class="ph-bold ph-presentation-chart"></i>
+                  </div>
+                  <span class="font-semibold text-slate-700 group-hover:text-sky-700">Phân quyền Dashboard IOC</span>
+                </div>
+                <i class="ph ph-caret-right text-slate-400 group-hover:text-sky-600 transition"></i>
+              </a>
+
+              <a href="<?php echo XC_URL; ?>/accounts/backend" class="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 transition group border border-slate-100">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-lg bg-emerald-100/70 text-emerald-600 flex items-center justify-center text-sm">
+                    <i class="ph-bold ph-stethoscope"></i>
+                  </div>
+                  <span class="font-semibold text-slate-700 group-hover:text-emerald-700">Phân quyền Backend Y tế</span>
+                </div>
+                <i class="ph ph-caret-right text-slate-400 group-hover:text-emerald-600 transition"></i>
+              </a>
+
+              <a href="<?php echo XC_URL; ?>/departments" class="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 transition group border border-slate-100">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-lg bg-indigo-100/70 text-indigo-600 flex items-center justify-center text-sm">
+                    <i class="ph-bold ph-hospital"></i>
+                  </div>
+                  <span class="font-semibold text-slate-700 group-hover:text-indigo-700">Quản lý Khoa / Phòng</span>
+                </div>
+                <i class="ph ph-caret-right text-slate-400 group-hover:text-indigo-600 transition"></i>
+              </a>
+
+              <a href="<?php echo XC_URL; ?>/system" class="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-purple-50 hover:text-purple-700 transition group border border-slate-100">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-lg bg-purple-100/70 text-purple-600 flex items-center justify-center text-sm">
+                    <i class="ph-bold ph-gear"></i>
+                  </div>
+                  <span class="font-semibold text-slate-700 group-hover:text-purple-700">Cấu hình & Kết nối API</span>
+                </div>
+                <i class="ph ph-caret-right text-slate-400 group-hover:text-purple-600 transition"></i>
+              </a>
             </div>
           </div>
+
         </div>
-      </section>
 
-      <!-- CÁC TAB KHÁC -->
-      <section id="tab-outpatient" class="tab-content hidden space-y-4">
-        <div class="bg-white p-6 rounded-2xl border border-blue-100"><h2 class="font-bold text-slate-800">Quản Lý & Thống Kê Tiếp Đón Khám Bệnh Ngoại Trú</h2></div>
       </section>
-      <section id="tab-inpatient" class="tab-content hidden space-y-4">
-        <div class="bg-white p-6 rounded-2xl border border-blue-100"><h2 class="font-bold text-slate-800">Giám Sát Bệnh Nhân Nội Trú & Biến Động Nhập/Ra Viện</h2></div>
-      </section>
-      <section id="tab-it-infra" class="tab-content hidden space-y-4">
-        <div class="bg-white p-6 rounded-2xl border border-blue-100"><h2 class="font-bold text-slate-800">Hạ Tầng Máy Chủ, Cơ Sở Dữ Liệu & Thiết Bị Mạng</h2></div>
-      </section>
-      <section id="tab-security" class="tab-content hidden space-y-4">
-        <div class="bg-white p-6 rounded-2xl border border-blue-100"><h2 class="font-bold text-slate-800">Bảo Đảm An Toàn Thông Tin & Báo Cáo Tuân Thủ</h2></div>
-      </section>
-
     </main>
   </div>
-
-  <!-- ==================== POPUP MODAL ĐỔI MẬT KHẨU ==================== -->
-  <div id="change-password-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-blue-100 overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-50/50">
-        <div class="flex items-center gap-2 text-brand-700">
-          <i class="ph-bold ph-key text-xl"></i>
-          <h3 class="font-bold text-base text-slate-800">Đổi Mật Khẩu Quản Trị</h3>
-        </div>
-        <button onclick="closeChangePasswordModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-          <i class="ph ph-x text-lg"></i>
-        </button>
-      </div>
-      <form onsubmit="handlePasswordSubmit(event)" class="p-6 space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu hiện tại</label>
-          <input type="password" required class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500" placeholder="••••••••">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu mới</label>
-          <input type="password" required minlength="8" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500" placeholder="Tối thiểu 8 ký tự">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Xác nhận mật khẩu mới</label>
-          <input type="password" required minlength="8" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500" placeholder="••••••••">
-        </div>
-        <div class="pt-2 flex items-center justify-end gap-2.5">
-          <button type="button" onclick="closeChangePasswordModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Hủy</button>
-          <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-md shadow-brand-500/20">Lưu Mật Khẩu</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ==================== JAVASCRIPT ==================== -->
-  <script>
-    let isSidebarCollapsed = false;
-
-    function toggleSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('mobile-overlay');
-      const isMobile = window.innerWidth < 1024;
-
-      if (isMobile) {
-        if (sidebar.classList.contains('-translate-x-full')) {
-          sidebar.classList.remove('-translate-x-full');
-          overlay.classList.remove('hidden');
-        } else {
-          sidebar.classList.add('-translate-x-full');
-          overlay.classList.add('hidden');
-        }
-      } else {
-        isSidebarCollapsed = !isSidebarCollapsed;
-        const textElements = document.querySelectorAll('.sidebar-text');
-        if (isSidebarCollapsed) {
-          sidebar.classList.remove('w-64');
-          sidebar.classList.add('w-20');
-          textElements.forEach(el => el.classList.add('hidden'));
-        } else {
-          sidebar.classList.remove('w-20');
-          sidebar.classList.add('w-64');
-          textElements.forEach(el => el.classList.remove('hidden'));
-        }
-      }
-    }
-
-    function initSidebarState() {
-      const sidebar = document.getElementById('sidebar');
-      if (window.innerWidth < 1024) {
-        sidebar.classList.add('-translate-x-full');
-      } else {
-        sidebar.classList.remove('-translate-x-full');
-      }
-    }
-    window.addEventListener('resize', initSidebarState);
-    window.addEventListener('DOMContentLoaded', initSidebarState);
-
-    // Xổ / Thu submenu danh mục
-    function toggleSubmenu(menuId, button) {
-      const menu = document.getElementById(menuId);
-      const arrow = button.querySelector('.submenu-arrow');
-      menu.classList.toggle('hidden');
-      if (menu.classList.contains('hidden')) {
-        arrow.classList.remove('rotate-180');
-      } else {
-        arrow.classList.add('rotate-180');
-      }
-    }
-
-    // Chuyển tab nội dung
-    function switchTab(tabId, element) {
-      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
-      const selectedTab = document.getElementById(`tab-${tabId}`);
-      if (selectedTab) selectedTab.classList.remove('hidden');
-
-      document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.classList.remove('bg-brand-50', 'text-brand-700', 'font-semibold');
-        btn.classList.add('text-slate-600');
-        const icon = btn.querySelector('i');
-        if (icon) icon.classList.remove('text-brand-600');
-      });
-
-      document.querySelectorAll('.subnav-item').forEach(btn => {
-        btn.classList.remove('text-brand-700', 'font-bold', 'bg-blue-50/80');
-        btn.classList.add('text-slate-600');
-      });
-
-      if (element.classList.contains('subnav-item')) {
-        element.classList.add('text-brand-700', 'font-bold', 'bg-blue-50/80');
-        element.classList.remove('text-slate-600');
-      } else {
-        element.classList.add('bg-brand-50', 'text-brand-700', 'font-semibold');
-        element.classList.remove('text-slate-600');
-        const icon = element.querySelector('i');
-        if (icon) icon.classList.add('text-brand-600');
-      }
-
-      const pageTitle = document.getElementById('page-title');
-      const textSpan = element.querySelector('span.sidebar-text');
-      pageTitle.innerText = textSpan ? textSpan.innerText : 'Quản Trị Hệ Thống';
-
-      if (window.innerWidth < 1024) toggleSidebar();
-    }
-
-    // Dropdown User
-    function toggleUserDropdown(event) {
-      event.stopPropagation();
-      document.getElementById('user-dropdown').classList.toggle('hidden');
-    }
-    window.addEventListener('click', () => {
-      const dropdown = document.getElementById('user-dropdown');
-      if (!dropdown.classList.contains('hidden')) dropdown.classList.add('hidden');
-    });
-
-    // Modal Đổi Mật Khẩu
-    function openChangePasswordModal() {
-      document.getElementById('user-dropdown').classList.add('hidden');
-      document.getElementById('change-password-modal').classList.remove('hidden');
-    }
-    function closeChangePasswordModal() {
-      document.getElementById('change-password-modal').classList.add('hidden');
-    }
-    function handlePasswordSubmit(event) {
-      event.preventDefault();
-      alert('Đổi mật khẩu tài khoản quản trị thành công!');
-      closeChangePasswordModal();
-    }
-
-    // Thao tác xem/sửa/xóa test
-    function handleAction(msg) {
-      alert('Thao tác được kích hoạt: ' + msg);
-    }
-
-    // Đăng xuất
-    function logoutAction() {
-      if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi IOC?')) {
-        alert('Đã đăng xuất thành công.');
-      }
-    }
-  </script>
-</body>
-</html>
+<?php require_once('footer.php'); ?>

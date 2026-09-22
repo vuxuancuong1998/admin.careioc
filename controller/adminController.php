@@ -13,6 +13,8 @@ Class adminController extends baseController
 	 */
 	public function outpatient()
 	{
+		header('Location: ' . XC_URL . '/backend/outpatient');
+		return;
 		global $db;
 		if (empty($_SESSION['outpatient_csrf'])) {
 			$_SESSION['outpatient_csrf'] = bin2hex(random_bytes(24));

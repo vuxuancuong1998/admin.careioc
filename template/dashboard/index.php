@@ -257,7 +257,7 @@ svg{width:100%;height:100%}.axis{stroke:#24415e;stroke-width:1}.gridline{stroke:
     <div class="live" style="display:flex;align-items:center;gap:12px">
       <div style="display:flex;align-items:center;gap:8px;color:#cfe7ff;font-size:13px"><span class="dot"></span><span>Đang cập nhật thời gian thực</span></div>
       
-      <a href="admin-data.html" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#20c6b7,#39a0ff);color:#040914;text-decoration:none;font-size:12px;font-weight:700;padding:6px 14px;border-radius:8px;box-shadow:0 0 16px rgba(32,198,183,0.3);transition:all 0.2s">
+      <a href="<?php echo XC_URL; ?>/admin/accounts/admin" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#20c6b7,#39a0ff);color:#040914;text-decoration:none;font-size:12px;font-weight:700;padding:6px 14px;border-radius:8px;box-shadow:0 0 16px rgba(32,198,183,0.3);transition:all 0.2s">
         <span>⚙️ Quản trị & Nhập liệu</span>
       </a>
 
@@ -277,7 +277,7 @@ svg{width:100%;height:100%}.axis{stroke:#24415e;stroke-width:1}.gridline{stroke:
             </div>
           </div>
           <ul class="user-menu-list">
-            <li><a class="user-menu-link" href="admin-data.html"><i class="fa-solid fa-pen-to-square"></i> Cổng Quản trị & Nhập liệu</a></li>
+            <li><a class="user-menu-link" href="<?php echo XC_URL; ?>/admin/accounts/admin"><i class="fa-solid fa-pen-to-square"></i> Quản lý tài khoản</a></li>
             <li><button class="user-menu-link logout" onclick="handleLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> <b>Đăng xuất</b></button></li>
           </ul>
         </div>
@@ -904,7 +904,7 @@ function toggleUserDropdown(menuId) {
 function handleLogout() {
   showIocLoader('ĐANG ĐĂNG XUẤT HỆ THỐNG...');
   setTimeout(() => {
-    window.location.href = 'login.html';
+    window.location.href = <?php echo json_encode(XC_URL . '/admin/logout'); ?>;
   }, 600);
 }
 
