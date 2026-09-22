@@ -117,7 +117,7 @@ private function getController() {
 	{
 		/*** get the parts of the route ***/
 		$parts = explode('/', $route);
-		$indexActions = array('login', 'logout', 'accounts', 'outpatient', 'inpatient', 'departments', 'beds', 'staff', 'infrastructure', 'security');
+		$indexActions = array('login', 'logout', 'accounts', 'outpatient', 'inpatient', 'departments', 'beds', 'staff', 'infrastructure', 'security', 'system', 'system_api');
 		if(in_array($parts[0], $indexActions, true))
 		{
 			$this->controller = "index";
